@@ -13,6 +13,11 @@ client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 
+const onError = (evt, term, err) => {
+    console.error(err);
+    evt.reply(`error searching for ${term}`);
+};
+
 const kanka = query => {console.log(`${KANKA_API}${query}`); return fetch(`${KANKA_API}${query}`, {
     headers: {
         'Accept': 'application/json',
@@ -45,9 +50,9 @@ client.on('message', function (evt) {
                                     console.log('C', c);
                                     if (c && c.data) {
                                         // evt.reply(turndown(c.data.entry).slice(0,1800));
-                                        evt.reply(JSON.stringify(c.data.entry.slice(0,1800)));
+                                        evt.reply(JSON.stringify(c.data.entry.slice(0, 1800)));
                                     } else throw 'Second Query Failed';
-                                }).catch(e => {throw e;});
+                                }).catch(e => onError(evt, term, e));
                             break;
                         case 'location':
                             kanka(`locations/${resp.data[0].id}`)
@@ -55,10 +60,10 @@ client.on('message', function (evt) {
                                 .then(c => {
                                     console.log('C', c);
                                     if (c && c.data) {
-                                        evt.reply(JSON.stringify(c.data.entry.slice(0,1800)));
+                                        evt.reply(JSON.stringify(c.data.entry.slice(0, 1800)));
                                         // evt.reply(turndown(c.data.entry).slice(0,1800));
                                     } else throw 'Second Query Failed';
-                                }).catch(e => {throw e;});
+                                }).catch(e => onError(evt, term, e));
                             break;
 
                         default: evt.reply(JSON.stringify(resp.data[0]).slice(0, 1800)); break;
@@ -67,10 +72,7 @@ client.on('message', function (evt) {
             }).catch(e => {
                 if (e === 'NotFound') {
                     evt.reply(`${term} Not Found`);
-                } else {
-                    console.error(e);
-                    evt.reply(`error searching for ${term}`);
-                }
+                } else onError(evt, term, e)
             });
     }
 
