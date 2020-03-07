@@ -6,9 +6,6 @@ const KANKA_API = process.env.KANKA_API;
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
-const Turndown = require('turndown');
-const turndown = (new Turndown()).turndown;
-
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
@@ -29,7 +26,6 @@ const CHAR_CAP = 1800;
 const TRUE_URL = "https://kanka.io/en-US/campaign/";
 const GIVEN_URL = "https://kanka.io/campaign/";
 const URL_FIX_OFFSET = TRUE_URL.length - GIVEN_URL.length + 1;
-console.log(URL_FIX_OFFSET);
 
 const clean = message => {
     const suf = message.length == CHAR_CAP + URL_FIX_OFFSET ? '...' : '';
@@ -37,7 +33,6 @@ const clean = message => {
         .replace(/^\n*"\n*/, '')
         .replace(/\n*"\n*$/, '')
         .replace(/<br *\/>/g, '\n')
-        // .replace(/^"\n(.*)\n"$/, "$1")
         .replace(/<p>(.*)<\/p>/g, "$1\n")
         .replace(/<em *>(.*)<\/em *>/g, "$1\n")
         .replace(/<\/*p *>/g, '')
@@ -45,14 +40,35 @@ const clean = message => {
         .replace(/\n*$/, '') + suf;
 }
 
+const churnTracker = (evt, message) => {
+    console.log('in churn');
+    const changes = message.match(/[+-]? *\d+/g);
+    console.log(changes);
+    if (changes && changes.length > 0 && !message.match(/[a-zA-Z]/)) {
+        const churn = changes.map(change => Number(change.replace(/ /g, ''))).reduce((acc, c) => acc + c, 0);
+        evt.channel.fetchMessages()
+            .then(messages => {
+                const m = messages.sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+                const messageMatch = m.find(m => m.content.match(/^Churn: (-?\d+)$/));
+                const current = messageMatch && messageMatch.content.match(/^Churn: (-?\d+)$/)[1];
+                if (current && !Number.isNaN(churn + Number(current))) {
+                    evt.channel.send(`Churn: ${churn + Number(current)}`);
+                } else {
+                    evt.reply(`Could not interpret current churn or new changes:\nNewChurn?: ${churn}\nCurrent?: ${current}`)
+                }
+            }).catch(error => (console.error(error), evt.reply(`Error fetching messages to find current churn\nNew Churn: ${churn}`)));
+    } else {
+        evt.reply('Could not interpret changes to churn, use format +1, -2, etc.')
+    }
+}
 
 client.on('message', evt =>  {
+    if (evt.author.username === 'Miller') return;
     const message = evt.content;
-    console.log({
-        // evt,
-        message
-    });
-
+    // console.log({
+    //     evt,
+    //     message
+    // });
     const tag = message.match(/{{(.*)}}/);
     const [match, term] = tag ? tag : [null, null];
     if (term) {
@@ -96,27 +112,9 @@ client.on('message', evt =>  {
                     evt.reply(`${term} Not Found`);
                 } else onError(evt, term, e)
             });
+    } else if (['bot-testing', 'churn-tracker'].includes(evt.channel.name)) {
+        churnTracker(evt, message);
     }
-
-    // Our bot needs to know if it will execute a command
-    // It will listen for messages that will start with `!`
-    if (message && message.substring(0, 1) == '!') {
-        var args = message.substring(1).split(' ');
-        var cmd = args[0];
-       
-        args = args.splice(1);
-        switch(cmd) {
-            // !ping
-            case 'ping':
-                // bot.sendMessage({
-                //     to: channelID,
-                //     message: 'Pong!'
-                // });
-                evt.reply('pong');
-            break;
-            // Just add any case commands if you want to..
-         }
-     }
 });
 
 client.login(process.env.DISCORD_TOKEN);
