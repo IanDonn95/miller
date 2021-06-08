@@ -44,21 +44,24 @@ const churnTracker = (evt, message) => {
     console.log('in churn');
     const changes = message.match(/[+-]? *\d+/g);
     console.log(changes);
+    const newChurn = message.match(/^[Cc]hurn: (-?\d+)$/) && message.match(/^[Cc]hurn: (-?\d+)$/)[1];
     if (changes && changes.length > 0 && !message.match(/[a-zA-Z]/)) {
         const churn = changes.map(change => Number(change.replace(/ /g, ''))).reduce((acc, c) => acc + c, 0);
         evt.channel.fetchMessages()
             .then(messages => {
                 const m = messages.sort((a, b) => b.createdTimestamp - a.createdTimestamp);
                 const messageMatch = m.find(m => m.content.match(/^Churn: (-?\d+)$/));
-                const current = messageMatch && messageMatch.content.match(/^Churn: (-?\d+)$/)[1];
+                const current = messageMatch && messageMatch.content.match(/^[Cc]hurn: (-?\d+)$/)[1];
                 if (current && !Number.isNaN(churn + Number(current))) {
                     evt.channel.send(`Churn: ${churn + Number(current)}`);
                 } else {
                     evt.reply(`Could not interpret current churn or new changes:\nNewChurn?: ${churn}\nCurrent?: ${current}`)
                 }
             }).catch(error => (console.error(error), evt.reply(`Error fetching messages to find current churn\nNew Churn: ${churn}`)));
+    } else if (newChurn) {
+        evt.reply(`Setting Churn to ${newChurn}`);
     } else {
-        evt.reply('Could not interpret changes to churn, use format +1, -2, etc.')
+        evt.reply('Could not interpret changes to churn, use format +1, -2, etc.');
     }
 }
 
@@ -112,7 +115,7 @@ client.on('message', evt =>  {
                     evt.reply(`${term} Not Found`);
                 } else onError(evt, term, e)
             });
-    } else if (['bot-testing', 'churn-tracker'].includes(evt.channel.name)) {
+    } else if (['bot-testing', 'churn-tracker', 'test-table'].includes(evt.channel.name)) {
         churnTracker(evt, message);
     }
 });
