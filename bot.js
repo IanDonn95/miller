@@ -68,10 +68,6 @@ const churnTracker = (evt, message) => {
 client.on('message', evt =>  {
     if (evt.author.username === 'Miller') return;
     const message = evt.content;
-    // console.log({
-    //     evt,
-    //     message
-    // });
     const tag = message.match(/{{(.*)}}/);
     const [match, term] = tag ? tag : [null, null];
     if (term) {
